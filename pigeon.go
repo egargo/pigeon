@@ -3,36 +3,26 @@ package pigeon
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 )
 
-// H
-type H struct {
+// S is a predefined structure.
+// Message, for information about the response.
+// Error, for error information about the response.
+// Data, for data that will be return with the response.
+type S struct {
 	Message string         `json:"message,omitempty"`
 	Error   string         `json:"error,omitempty"`
 	Data    map[string]any `json:"data,omitempty"`
 }
 
-func JSON(w http.ResponseWriter, r *http.Request, status int, data H) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8;")
+// H is a shortcut for map[string]any, used for free-form structure.
+type H map[string]any
 
-	var response bytes.Buffer
-
-	err := json.NewEncoder(&response).Encode(data)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "{\"error\": \"%s\"}", err.Error())
-		return
-	}
-
-	w.WriteHeader(status)
-	w.Write(response.Bytes())
-}
-
-func DecodeJSON[T any](r *http.Request, class T, data io.Reader) (T, error) {
+// DecodeJSON decodes a JSON payload from the given io.Reader into a value of type T.
+func DecodeJSON[T any](class T, data io.Reader) (T, error) {
 	var m any
 	mErr := json.NewDecoder(data).Decode(&m)
 	if mErr != nil {
@@ -51,4 +41,21 @@ func DecodeJSON[T any](r *http.Request, class T, data io.Reader) (T, error) {
 	}
 
 	return t, nil
+}
+
+// JSON writes the given data as a JSON response with the specified HTTP status code.
+func JSON(w http.ResponseWriter, status int, data any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8;")
+
+	var response bytes.Buffer
+
+	err := json.NewEncoder(&response).Encode(data)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "{\"error\": \"%s\"}", err.Error())
+		return
+	}
+
+	w.WriteHeader(status)
+	w.Write(response.Bytes())
 }
